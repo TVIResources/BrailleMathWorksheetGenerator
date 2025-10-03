@@ -1,0 +1,29 @@
+# Ignore PowerShell generated files and common editor/OS files
+# Keep the script `math_worksheet_tui.ps1` tracked
+
+# PowerShell console history
+ConsoleHost_history.txt
+
+# PowerShell temporary files
+*.ps1xml
+*.psd1
+*.psm1
+
+# Output or generated worksheets (if script creates .txt/.csv files you don't want in repo)
+# Uncomment if you want to ignore generated worksheets
+# *.txt
+# *.csv
+
+# VS Code settings and local workspace files
+.vscode/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# npm/node artifacts (if ever used)
+node_modules/
+
+# Python virtual environment (if used)
+venv/
+env/
