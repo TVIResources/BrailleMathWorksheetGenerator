@@ -54,16 +54,22 @@ function Show-Menu {
     Write-Host "1. Generate Addition Worksheets" -ForegroundColor Green
     Write-Host "2. Generate Subtraction Worksheets" -ForegroundColor Green
     Write-Host "3. Generate Mixed Add/Subtract Worksheets" -ForegroundColor Green
-    Write-Host "4. Generate Multiplication Worksheets" -ForegroundColor Green
+    Write-Host "4. Generate Multiplication Worksheets (standard)" -ForegroundColor Green
+    Write-Host "5. Generate Multiplication (fixed first factor)" -ForegroundColor Green
+    Write-Host "6. Generate Multiplication XxY grid" -ForegroundColor Green
+    Write-Host "7. Generate Division (no remainders)" -ForegroundColor Green
+    Write-Host "8. Generate Mixed Multiplication/Division" -ForegroundColor Green
     Write-Host ""
-    Write-Host "5. Convert Existing Worksheets to Individual BRF Files" -ForegroundColor Yellow
-    Write-Host "6. Convert Existing Worksheets to Single Combined BRF" -ForegroundColor Yellow
+    Write-Host "9. Convert Existing Worksheets to Individual BRF Files" -ForegroundColor Yellow
+    Write-Host "10. Convert Existing Worksheets to Single Combined BRF" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "7. Generate AND Convert to Individual BRF Files" -ForegroundColor Magenta
-    Write-Host "8. Generate AND Convert to Single Combined BRF" -ForegroundColor Magenta
+    Write-Host "11. Generate AND Convert to Individual BRF Files" -ForegroundColor Magenta
+    Write-Host "12. Generate AND Convert to Single Combined BRF" -ForegroundColor Magenta
     Write-Host ""
-    Write-Host "9. Exit" -ForegroundColor Red
+    Write-Host "13. Exit" -ForegroundColor Red
     Write-Host ""
+    Write-Host "================================================" -ForegroundColor Cyan
+    Write-Host "" 
     Write-Host "================================================" -ForegroundColor Cyan
 }
 
@@ -84,6 +90,7 @@ function Generate-Problem {
     $num1 = Get-RandomNumber -Digits $Digits
     $num2 = Get-RandomNumber -Digits $Digits
 
+    # Use Unicode minus (U+2212) for subtraction, multiplication cross '×' for multiplication, '÷' for division
     if ($Operation -eq '−') {
         if ($num1 -lt $num2) {
             $temp = $num1
@@ -93,6 +100,39 @@ function Generate-Problem {
     }
 
     return "$num1$Operation$num2"
+}
+
+# Generate a multiplication problem with a fixed first factor
+function Generate-MultiplicationFixed {
+    param(
+        [int]$Fixed,
+        [int]$OtherMax
+    )
+    $other = Get-Random -Minimum 1 -Maximum ($OtherMax + 1)
+    return "$Fixed×$other"
+}
+
+# Generate an XxY multiplication grid problem (both factors limited)
+function Generate-MultiplicationXY {
+    param(
+        [int]$X,
+        [int]$Y
+    )
+    $a = Get-Random -Minimum 1 -Maximum ($X + 1)
+    $b = Get-Random -Minimum 1 -Maximum ($Y + 1)
+    return "$a×$b"
+}
+
+# Generate a division problem with no remainder (a ÷ b = whole number)
+function Generate-WholeDivision {
+    param(
+        [int]$MaxDivisor,
+        [int]$MaxQuotient
+    )
+    $divisor = Get-Random -Minimum 1 -Maximum ($MaxDivisor + 1)
+    $quotient = Get-Random -Minimum 1 -Maximum ($MaxQuotient + 1)
+    $dividend = $divisor * $quotient
+    return "$dividend÷$divisor"
 }
 
 function Generate-Worksheets {
@@ -142,7 +182,7 @@ function Generate-Worksheets {
             }
             "multiplication" {
                 for ($i = 1; $i -le $ProblemsPerSheet; $i++) {
-                    $problems += Generate-Problem -Digits $Digits -Operation '*'
+                    $problems += Generate-Problem -Digits $Digits -Operation '×'
                 }
             }
         }
@@ -261,13 +301,13 @@ function Get-UserInput {
         [int]$Default
     )
     
-    $input = Read-Host "$Prompt (default: $Default)"
-    if ([string]::IsNullOrWhiteSpace($input)) {
+    $rawInput = Read-Host "$Prompt (default: $Default)"
+    if ([string]::IsNullOrWhiteSpace($rawInput)) {
         return $Default
     }
-    
+
     $value = 0
-    if ([int]::TryParse($input, [ref]$value)) {
+    if ([int]::TryParse($rawInput, [ref]$value)) {
         return $value
     }
     
@@ -307,28 +347,103 @@ if ($AutoTest) {
 else {
     # Interactive menu loop
     do {
-        Show-Menu
-        $choice = Read-Host "Enter your choice (1-9)"
+    Show-Menu
+    $choice = Read-Host "Enter your choice (1-13)"
         
         switch ($choice) {
-            {$_ -in "1", "2", "3", "4"} {
-                $type = switch ($_) {
-                    "1" { "addition" }
-                    "2" { "subtraction" }
-                    "3" { "mixed" }
-                    "4" { "multiplication" }
-                }
-                
-                $digits = Get-UserInput -Prompt "`nEnter number of digits per operand" -Default 2
-                $count = Get-UserInput -Prompt "Enter number of worksheets to generate" -Default 50
-                
-                Generate-Worksheets -Digits $digits -Type $type -Count $count
-                
+            {$_ -in "1", "2", "3", "4", "5", "6", "7", "8"} {
+                    $selection = $_
+                    switch ($selection) {
+                        "1" { $type = "addition" }
+                        "2" { $type = "subtraction" }
+                        "3" { $type = "mixed" }
+                        "4" { $type = "multiplication" }
+                        "5" { $type = "mul_fixed" }
+                        "6" { $type = "mul_xy" }
+                        "7" { $type = "division_whole" }
+                        "8" { $type = "mixed_muldiv" }
+                    }
+
+                    $problemsPerSheet = Get-UserInput -Prompt "`nEnter number of problems per sheet" -Default 20
+                    $count = Get-UserInput -Prompt "Enter number of worksheets to generate" -Default 50
+
+                    switch ($type) {
+                        "addition" { $digits = Get-UserInput -Prompt "Enter number of digits per operand" -Default 2; Generate-Worksheets -Digits $digits -Type addition -Count $count -ProblemsPerSheet $problemsPerSheet }
+                        "subtraction" { $digits = Get-UserInput -Prompt "Enter number of digits per operand" -Default 2; Generate-Worksheets -Digits $digits -Type subtraction -Count $count -ProblemsPerSheet $problemsPerSheet }
+                        "mixed" { $digits = Get-UserInput -Prompt "Enter number of digits per operand" -Default 2; Generate-Worksheets -Digits $digits -Type mixed -Count $count -ProblemsPerSheet $problemsPerSheet }
+                        "multiplication" { $digits = Get-UserInput -Prompt "Enter number of digits per operand" -Default 1; Generate-Worksheets -Digits $digits -Type multiplication -Count $count -ProblemsPerSheet $problemsPerSheet }
+                        "mul_fixed" {
+                            $fixed = Get-UserInput -Prompt "Enter the fixed first factor (e.g., 2 for 2xN)" -Default 2
+                            $otherMax = Get-UserInput -Prompt "Enter the maximum other factor" -Default 12
+                            # generate custom sheets
+                            if (-not (Test-Path $outputFolder)) { New-Item -ItemType Directory -Path $outputFolder | Out-Null }
+                            for ($s=1; $s -le $count; $s++) {
+                                $lines = @()
+                                for ($i=1; $i -le $problemsPerSheet; $i++) {
+                                    $lines += Generate-MultiplicationFixed -Fixed $fixed -OtherMax $otherMax
+                                }
+                                $filename = "mul_fixed_${fixed}_(${0:D2}).txt" -f $s
+                                $filepath = Join-Path $outputFolder $filename
+                                $lines | Out-File -FilePath $filepath -Encoding UTF8
+                            }
+                            Write-Host "Generated $count fixed-factor multiplication worksheets in: $outputFolder" -ForegroundColor Green
+                        }
+                        "mul_xy" {
+                            $x = Get-UserInput -Prompt "Enter X (max for first factor)" -Default 12
+                            $y = Get-UserInput -Prompt "Enter Y (max for second factor)" -Default 12
+                            if (-not (Test-Path $outputFolder)) { New-Item -ItemType Directory -Path $outputFolder | Out-Null }
+                            for ($s=1; $s -le $count; $s++) {
+                                $lines = @()
+                                for ($i=1; $i -le $problemsPerSheet; $i++) {
+                                    $lines += Generate-MultiplicationXY -X $x -Y $y
+                                }
+                                $filename = "mul_${x}x${y}_(${0:D2}).txt" -f $s
+                                $filepath = Join-Path $outputFolder $filename
+                                $lines | Out-File -FilePath $filepath -Encoding UTF8
+                            }
+                            Write-Host "Generated $count ${x}x${y} multiplication worksheets in: $outputFolder" -ForegroundColor Green
+                        }
+                        "division_whole" {
+                            $maxDivisor = Get-UserInput -Prompt "Enter maximum divisor" -Default 12
+                            $maxQuotient = Get-UserInput -Prompt "Enter maximum quotient" -Default 12
+                            if (-not (Test-Path $outputFolder)) { New-Item -ItemType Directory -Path $outputFolder | Out-Null }
+                            for ($s=1; $s -le $count; $s++) {
+                                $lines = @()
+                                for ($i=1; $i -le $problemsPerSheet; $i++) {
+                                    $lines += Generate-WholeDivision -MaxDivisor $maxDivisor -MaxQuotient $maxQuotient
+                                }
+                                $filename = "division_whole_(${0:D2}).txt" -f $s
+                                $filepath = Join-Path $outputFolder $filename
+                                $lines | Out-File -FilePath $filepath -Encoding UTF8
+                            }
+                            Write-Host "Generated $count division worksheets (no remainders) in: $outputFolder" -ForegroundColor Green
+                        }
+                        "mixed_muldiv" {
+                            $maxDivisor = Get-UserInput -Prompt "Enter maximum divisor" -Default 12
+                            $maxQuotient = Get-UserInput -Prompt "Enter maximum quotient" -Default 12
+                            if (-not (Test-Path $outputFolder)) { New-Item -ItemType Directory -Path $outputFolder | Out-Null }
+                            for ($s=1; $s -le $count; $s++) {
+                                $lines = @()
+                                for ($i=1; $i -le ($problemsPerSheet / 2); $i++) {
+                                    $lines += Generate-MultiplicationXY -X $maxDivisor -Y $maxQuotient
+                                }
+                                for ($i=1; $i -le ($problemsPerSheet / 2); $i++) {
+                                    $lines += Generate-WholeDivision -MaxDivisor $maxDivisor -MaxQuotient $maxQuotient
+                                }
+                                $lines = $lines | Get-Random -Count $lines.Count
+                                $filename = "mixed_muldiv_(${0:D2}).txt" -f $s
+                                $filepath = Join-Path $outputFolder $filename
+                                $lines | Out-File -FilePath $filepath -Encoding UTF8
+                            }
+                            Write-Host "Generated $count mixed multiplication/division worksheets in: $outputFolder" -ForegroundColor Green
+                        }
+                    }
+
                 Write-Host "`nPress any key to continue..." -ForegroundColor Gray
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             }
             
-            "5" {
+            "9" {
                 if (Test-Path $outputFolder) {
                     Convert-ToIndividualBRF -SourceFolder $outputFolder
                 } else {
@@ -339,7 +454,7 @@ else {
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             }
             
-            "6" {
+            "10" {
                 if (Test-Path $outputFolder) {
                     $filename = Read-Host "`nEnter output filename (default: combined_worksheets.brf)"
                     if ([string]::IsNullOrWhiteSpace($filename)) {
@@ -354,7 +469,7 @@ else {
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             }
             
-            "7" {
+            "11" {
                 $type = Get-WorksheetType
                 $digits = Get-UserInput -Prompt "`nEnter number of digits per operand" -Default 2
                 $count = Get-UserInput -Prompt "Enter number of worksheets to generate" -Default 50
@@ -366,7 +481,7 @@ else {
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             }
             
-            "8" {
+            "12" {
                 $type = Get-WorksheetType
                 $digits = Get-UserInput -Prompt "`nEnter number of digits per operand" -Default 2
                 $count = Get-UserInput -Prompt "Enter number of worksheets to generate" -Default 50
@@ -382,7 +497,7 @@ else {
                 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
             }
             
-            "9" {
+            "13" {
                 Write-Host "`nExiting... Goodbye!" -ForegroundColor Green
                 break
             }
@@ -392,5 +507,5 @@ else {
                 Start-Sleep -Seconds 2
             }
         }
-    } while ($choice -ne "9")
+    } while ($choice -ne "13")
 }
